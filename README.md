@@ -1,33 +1,34 @@
 # cjk-novel
 
-An agent skill that typesets Chinese fiction into a **5 x 8 inch trade paperback PDF**.
+把中文小说排成 **5 × 8 英寸小开本 PDF** 的 agent skill。
 
-It ships a working XeLaTeX template (Source Han Serif body, Source Han Sans heads),
-a two-ink palette, running heads, optional cover page, widow/orphan control, and the
-three paragraph macros that carry the narrative rhythm. Compiled with
-[tectonic](https://tectonic-typesetting.github.io/), a lightweight XeTeX engine, so
-there is no TeX Live to install.
+内置一份能直接用的 XeLaTeX 模板（正文思源宋体、标题与页眉思源黑体）、双色墨配色、
+页眉页码、可选封面插页、孤行寡行控制，以及承载叙事节奏的三个段落宏。用
+[tectonic](https://tectonic-typesetting.github.io/) 编译——一个轻量的 XeTeX 引擎，
+**不需要装 TeX Live**。
+
+[English](README.en.md)
 
 ```
 $ python scripts/build.py --init my-book
 $ cd my-book && python ../scripts/build.py novel.tex
-OK  22 pages  ->  .../build/novel.pdf
+OK  22 pages  ->  .../build/novel.pdf     # 页数取决于你写了多少字
 ```
 
-## Why this exists
+## 为什么会有这个 skill
 
-The layout was reverse-engineered from a hand-tuned 5 x 8 edition, and the part that
-was easy to lose was *why* the preamble looks the way it does. It carries a baseline
-grid with a compensated value:
+这套版式是从一本手工调校过的 5 × 8 开本里反推出来的，而最容易在转手时丢掉的部分，
+是 preamble 里那些数字**为什么长这样**。它带着一套基线网格，其中一个值是经过补偿的：
 
 ```
-BodySingleLeading = 17.3076923   is not the leading
-17.3076923 x \setstretch{1.3}  = 22.5pt   is
+BodySingleLeading = 17.3076923   ← 它本身不是行距
+17.3076923 × \setstretch{1.3}  =  22.5pt  ← 这个才是
 ```
 
-Change the font size or the setstretch without touching `\BodySingleLeading` and the
-grid silently stops being 22.5pt. The PDF still builds. Nothing warns you. So
-`scripts/verify.py` compiles a throwaway probe and asks TeX for the real numbers:
+如果你改了字号或 `\setstretch` 却没同步改 `\BodySingleLeading`，网格就不再是 22.5pt。
+**PDF 照样能编译出来，没有任何报错，也没有人会提醒你。**
+
+所以 `scripts/verify.py` 会编译一个一次性的探针文档，直接向 TeX 索要真实数值：
 
 ```
 ok   baseline 22.50005pt on the grid
@@ -35,19 +36,19 @@ ok   page 5.0x8.0 in
 ok   both Source Han fonts present
 ```
 
-## Install
+## 安装
 
-Clone it straight into a skills directory:
+直接克隆进 skills 目录即可：
 
 ```bash
 git clone https://github.com/jefeerzhang/cjk-novel.git \
     ~/.agents/skills/cjk-novel
 ```
 
-That works for prime-agent and any other Agent Skills compatible loader. Restart the
-agent afterwards so it rescans the skills directory.
+prime-agent 和其他兼容 Agent Skills 规范的 loader 都能用。装完**重启 agent**，
+它才会重新扫描 skills 目录。
 
-Requires the `tectonic` binary:
+需要 `tectonic` 可执行文件：
 
 ```bash
 scoop install tectonic      # Windows
@@ -55,43 +56,48 @@ choco install tectonic
 cargo install tectonic
 ```
 
-First run downloads the TeX bundle (~100 MB) and caches it; later runs work offline.
+首次运行会下载 TeX 资源包（约 100 MB）并缓存，之后离线可用。
 
-## The three macros
+## 三个段落宏
 
 ```latex
-\StoryParagraph{3}{...}   % paragraph, 3pt of air after it
-\StoryParagraph{0}{...}   % paragraph, no air — runs straight on
-\UnprintedPause           % blank space, no symbol at all
-\NarrativeBreak           % centred three dashes, changes scene
+\StoryParagraph{3}{...}   % 段落，段后留 3pt 气口
+\StoryParagraph{0}{...}   % 段落，段后不留，紧接下一段
+\UnprintedPause           % 只留空白，不给任何符号
+\NarrativeBreak           % 居中三短横，断场景
 ```
 
-The number in `\StoryParagraph` is the breathing. Short lines take `0`; a line that
-should sit on its own takes `3`. Do not normalise it away.
+`\StoryParagraph` 里那个数字就是**呼吸**。短句用 `0`，需要单独成段、悬在一行的那句用 `3`。
+不要把它统一掉。
 
-## Layout constants
+## 版面常数
 
 | | |
 |---|---|
-| Page | 5 x 8 in, inner/outer margin 0.5 in, top/bottom 0.7 in |
-| Body | Source Han Serif 9.5pt, leading 22.5pt |
-| Heads | Source Han Sans 8pt |
-| Ink | `PrimaryInk` #161618, `SecondaryInk` #5C5C62 |
+| 页面 | 5 × 8 英寸，订口/切口 0.5 英寸，天头/地脚 0.7 英寸 |
+| 正文 | 思源宋体 9.5pt，行距 22.5pt |
+| 页眉标题 | 思源黑体 8pt |
+| 墨色 | `PrimaryInk` #161618，`SecondaryInk` #5C5C62 |
 
-Measured, do-not-guess constants live in `assets/novel.tex`: the `70.817pt` opening
-breathing space, `37.4pt`/`31.4pt` around `\NarrativeBreak`, `22pt` for
-`\UnprintedPause`, and `\addtolength{\textheight}{-12pt}`. Change the page size or
-margins and they have to be re-measured against the output.
+`assets/novel.tex` 里还有几个**实测得来、不要凭感觉改**的常数：开篇留白 `70.817pt`、
+`\NarrativeBreak` 上下各 `37.4pt` / `31.4pt`、`\UnprintedPause` 的 `22pt`，以及
+`\addtolength{\textheight}{-12pt}`。改动页面尺寸或页边距后，这些值必须对着输出的 PDF
+重新量，不能估。
 
-## Credits
+## 已知噪音
 
-The template is adapted from
-[HEJustinSun/my-girlfriend-jingtian-latex](https://github.com/HEJustinSun/my-girlfriend-jingtian-latex),
-the XeLaTeX edition of 《我的女友景甜》 by 孙宇晨. That project's public repository
-contains the source the geometry, palettes and macros were derived from; none of its
-text is included here.
+Windows 上每次编译都会打印 `Fontconfig error: Cannot load default config file`。
+**无害**：字体是从 `./fonts/` 读的，不走系统字体查找。
 
-## Licence
+## 致谢
 
-Skill code and template: MIT. Bundled Source Han fonts: SIL Open Font License 1.1,
-see `assets/fonts/`.
+模板改编自
+[HEJustinSun/my-girlfriend-jingtian-latex](https://github.com/HEJustinSun/my-girlfriend-jingtian-latex)
+——孙宇晨《我的女友景甜》的 XeLaTeX 版。本仓库的版心、配色和段落宏都源自那个项目，
+但**不含其中任何正文内容**。
+
+## 许可
+
+skill 代码与模板：MIT。
+`assets/fonts/` 内的思源宋体与思源黑体：SIL Open Font License 1.1，
+见 `assets/fonts/*LICENSE.txt`。
