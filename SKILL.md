@@ -1,18 +1,42 @@
 ---
 name: cjk-novel
-description: Typeset Chinese fiction or narrative prose into a 5 x 8 inch trade paperback PDF with XeLaTeX and the lightweight tectonic engine. Ships a working template (Source Han Serif body, Source Han Sans heads), a two-ink palette, running heads, optional cover page, and three paragraph macros that encode narrative rhythm - StoryParagraph{space}{text}, NarrativeBreak, UnprintedPause. Use when asked to 排版成小开本, 出书, 把稿子排成 PDF, 排一本小说, make a book/novella PDF, or set Chinese prose in a 5x8 book layout.
+description: Typeset Chinese fiction or narrative prose into a 5 x 8 inch trade paperback PDF. Compiles with tectonic when available and falls back to xelatex, so it also works on machines that already have TeX Live or MiKTeX. Ships a working template (Source Han Serif body, Source Han Sans heads), a two-ink palette, running heads, optional cover page, and three paragraph macros that encode narrative rhythm - StoryParagraph{space}{text}, NarrativeBreak, UnprintedPause. Also checks and helps set up the XeLaTeX environment. Use when asked to 排版成小开本, 出书, 把稿子排成 PDF, 排一本小说, make a book/novella PDF, set Chinese prose in a 5x8 book layout, or when a LaTeX/xelatex/tectonic setup question comes up in this context.
 license: Template and scripts MIT; bundled Source Han fonts under SIL OFL 1.1 (see assets/fonts/*LICENSE.txt).
-compatibility: Needs the tectonic binary on PATH (scoop install tectonic / choco install tectonic / cargo install tectonic). First run downloads the TeX bundle (~100 MB), later runs work offline.
+compatibility: Needs one of tectonic (preferred) or xelatex on PATH. `python scripts/build.py --install` installs tectonic via scoop/choco/brew/apt/cargo; `doctor` reports what is missing. Nothing else is required.
 ---
 
 # 中文小说 5x8 小开本排版
 
-## What this gives you
+## First-time setup - do this before anything else
 
-A working XeLaTeX template for Chinese fiction, plus two scripts. Everything below
-is already solved: local CJK fonts, page geometry, a baseline grid, running heads,
-cover insertion, widow/orphan control, and the paragraph macros the original style
-was built around.
+The skill will not work until a XeLaTeX engine is on PATH. Check first, always:
+
+```bash
+python <skill>/scripts/build.py doctor
+```
+
+It prints one line per thing and ends with `ready` or `not ready yet`:
+
+| line | meaning |
+|---|---|
+| `engine MISSING` | neither tectonic nor xelatex is installed |
+| `bundle cold` | first build will download macros one by one (~44 MB); needs network |
+| `tempdir FAIL` | no writable temp directory |
+| `body/head font MISSING` | the two Source Han OTF files are gone from `assets/fonts/` |
+
+**If an engine is missing, ask the user before installing anything.** Installing
+software changes their machine and is their call, not yours. Once they agree:
+
+```bash
+python <skill>/scripts/build.py --install
+```
+
+That installs tectonic with whichever package manager is present (scoop, choco, brew,
+apt/dnf/pacman, cargo) and prints what it ran. Then re-run `doctor`.
+
+If the user would rather not install anything, they may already have TeX Live or
+MiKTeX — `xelatex` works just as well and the skill will use it automatically. Do not
+push them toward installing tectonic if `xelatex` is already there.
 
 ## Workflow
 
@@ -22,18 +46,17 @@ was built around.
 python <skill>/scripts/build.py --init my-book   # copies template + 20 MB of fonts
 # edit my-book/novel.tex: set \BookTitle, \BookAuthor, then write the text
 cd my-book && python <skill>/scripts/build.py novel.tex
-```
-
-**Existing project:** drop `novel.tex` in, make sure `fonts/` holds the two OTF
-files, then `python <skill>/scripts/build.py novel.tex`.
-
-Then always run the check:
-
-```bash
 python <skill>/scripts/verify.py novel.tex
 ```
 
-tectonic reruns TeX by itself when cross-references change, so one build is enough.
+**Existing project:** put `novel.tex` in, make sure `fonts/` holds the two OTF files,
+then build. `build.py` picks `novel.tex`, `main.tex` or the only `.tex` in the folder.
+
+Useful flags: `--xelatex` (force the fallback), `--offline` (fail rather than hit the
+network, useful once the bundle is cached), `-o DIR` (output folder).
+
+Both engines are one command. tectonic reruns itself when cross-references change;
+the xelatex path runs twice on its own.
 
 ## The three macros
 
@@ -71,10 +94,21 @@ nothing warns you. `verify.py` exists to catch exactly that.
 measured from a real layout. Change page size or margins and they have to be
 re-measured against the output PDF, not guessed.
 
+## Troubleshooting
+
+| symptom | cause and fix |
+|---|---|
+| `Fontconfig error: Cannot load default config file` (Windows) | harmless; fonts load from `./fonts/`, not the system |
+| compile dies on `connection`, `timed out`, `dns`, `proxy` | no network, and tectonic fetches macros on demand. Retry, or pass `--bundle <URL>` to point at a mirror |
+| `--offline` fails on a cold cache | expected; run one build with network first |
+| font not found | `fonts/` is missing an OTF; `python scripts/build.py --init .` in a fresh folder copies both back |
+| `engine MISSING` but the user says they installed it | PATH differs between their shell and this agent's environment; ask them to run `tectonic --version` in their own terminal |
+| `book.py`/`xelatex` not found on macOS/Linux | install `tectonic` (`brew`, `apt`, `dnf`, `pacman`) or a TeX distribution providing `xelatex` |
+
 ## Notes
 
-- Windows prints `Fontconfig error: Cannot load default config file` on every run.
-  Harmless: fonts come from `./fonts/`, not from the system.
-- `build/` is gitignored by the scaffold; PDFs live there.
+- `build/` is gitignored by the scaffold; PDFs land there.
 - Body is 9.5pt Source Han Serif; heads and running heads are Source Han Sans.
   Colours: `PrimaryInk` #161618, `SecondaryInk` #5C5C62.
+- The template contains no book text. Dropping prose into `\StoryParagraph` is all
+  it takes to typeset a manuscript.

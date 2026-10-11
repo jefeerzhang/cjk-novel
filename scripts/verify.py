@@ -9,6 +9,9 @@ the font size or setstretch and the baseline grid quietly stops being 22.5pt.
 """
 import os, re, shutil, subprocess, sys, tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import engine  # noqa: E402
+
 EXPECT_LEADING = 22.5   # TeX pt, on the page
 EXPECT_SHEET = (5.0, 8.0)
 MARK = "PROBE::"
@@ -25,8 +28,9 @@ def main():
     tex = sys.argv[1] if len(sys.argv) > 1 else "novel.tex"
     if not os.path.isfile(tex):
         sys.exit("no such file: " + tex)
-    if shutil.which("tectonic") is None:
-        sys.exit("tectonic is not on PATH (scoop install tectonic)")
+    eng, exe = engine.pick()
+    if not eng:
+        sys.exit("no XeLaTeX engine on PATH; run: python build.py --install")
     proj = os.path.dirname(os.path.abspath(tex)) or "."
 
     src = open(tex, encoding="utf-8").read()
@@ -52,8 +56,12 @@ def main():
         if os.path.isdir(src_dir) and not os.path.isdir(os.path.join(tmp, f)):
             shutil.copytree(src_dir, os.path.join(tmp, f))
 
-    r = subprocess.run(["tectonic", "-X", "compile", "probe.tex", "--outdir", tmp, "--keep-logs"],
-                       cwd=tmp, capture_output=True, text=True,
+    if eng == engine.PREFERRED:
+        cmd = [exe, "-X", "compile", "probe.tex", "--outdir", tmp, "--keep-logs"]
+    else:
+        cmd = [exe, "-interaction=nonstopmode", "-halt-on-error",
+               "-output-directory=" + tmp, "probe.tex"]
+    r = subprocess.run(cmd, cwd=tmp, capture_output=True, text=True,
                        encoding="utf-8", errors="replace")
     out = r.stdout + r.stderr
     logp = os.path.join(tmp, "probe.log")

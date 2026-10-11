@@ -36,9 +36,61 @@ ok   page 5.0x8.0 in
 ok   both Source Han fonts present
 ```
 
-## 安装
+## 环境配置
 
-直接克隆进 skills 目录即可：
+**先跑体检，再干别的：**
+
+```bash
+python scripts/build.py doctor
+```
+
+它会逐项报出缺什么，最后给一句结论：
+
+```
+cjk-novel environment
+
+  engine      ok    tectonic  (Tectonic 0.17.0)
+  bundle      ok    C:\Users\...\TectonicProject\Tectonic  (44 MB cached)
+  tempdir     ok    C:\Users\...\Temp
+  body font   ok    assets/fonts/SourceHanSerifCN-Regular.otf
+  head font   ok    assets/fonts/SourceHanSansCN-Medium.otf
+
+ready
+```
+
+| 结论行 | 含义 |
+|---|---|
+| `engine MISSING` | tectonic 和 xelatex 都没装 |
+| `bundle cold` | 首次编译要逐个下载宏包（约 44 MB），需要联网 |
+| `tempdir FAIL` | 没有可写的临时目录 |
+| `body/head font MISSING` | `assets/fonts/` 里的思源字体不见了 |
+
+**引擎怎么来。** 优先级是 **tectonic → xelatex**：
+
+- 有 **tectonic**（推荐）：一个二进制，不用装 TeX Live，会自动跑第二遍
+- 有 **xelatex**：很多机器本来就装了 TeX Live 或 MiKTeX，**直接就能用，skill 会自动回退**，
+  跑两遍。已经有 TeX 环境就不必再装 tectonic
+
+两个都没有时，装 tectonic：
+
+```bash
+python scripts/build.py --install
+```
+
+它会自动挑本机有的包管理器（scoop / choco / brew / apt / dnf / pacman / cargo）来装，
+并把执行的命令打出来。也可以手动装：
+
+```bash
+scoop install tectonic      # Windows，免管理员
+choco install tectonic
+brew install tectonic       # macOS
+apt install tectonic        # Debian/Ubuntu
+cargo install tectonic      # 已有 Rust
+```
+
+## 安装本 skill
+
+直接克隆进 skills 目录：
 
 ```bash
 git clone https://github.com/jefeerzhang/cjk-novel.git \
@@ -48,15 +100,18 @@ git clone https://github.com/jefeerzhang/cjk-novel.git \
 prime-agent 和其他兼容 Agent Skills 规范的 loader 都能用。装完**重启 agent**，
 它才会重新扫描 skills 目录。
 
-需要 `tectonic` 可执行文件：
+## 使用
 
 ```bash
-scoop install tectonic      # Windows
-choco install tectonic
-cargo install tectonic
+python scripts/build.py --init my-book     # 脚手架：模板 + 20 MB 字体
+cd my-book
+# 改 \BookTitle 和 \BookAuthor，然后写正文
+python ../scripts/build.py novel.tex
+python ../scripts/verify.py novel.tex
 ```
 
-首次运行会下载 TeX 资源包（约 100 MB）并缓存，之后离线可用。
+常用参数：`--xelatex`（强制走回退）、`--offline`（资源已缓存时禁止联网）、
+`-o DIR`（换输出目录）。
 
 ## 三个段落宏
 
@@ -84,10 +139,15 @@ cargo install tectonic
 `\addtolength{\textheight}{-12pt}`。改动页面尺寸或页边距后，这些值必须对着输出的 PDF
 重新量，不能估。
 
-## 已知噪音
+## 排错
 
-Windows 上每次编译都会打印 `Fontconfig error: Cannot load default config file`。
-**无害**：字体是从 `./fonts/` 读的，不走系统字体查找。
+| 现象 | 原因和对策 |
+|---|---|
+| Windows 打印 `Fontconfig error: Cannot load default config file` | **无害**。字体从 `./fonts/` 读，不走系统字体查找 |
+| 编译卡在 `connection` / `timed out` / `dns` / `proxy` | 没网，而 tectonic 按需下载宏包。换网络重试，或用 `--bundle <URL>` 指向镜像源 |
+| `--offline` 在冷缓存下失败 | 预期行为。先联网完整跑一次 |
+| 字体找不到 | `fonts/` 少了 OTF。在干净目录里 `python scripts/build.py --init .` 把两个字体拷回去 |
+| `engine MISSING` 但用户说他装了 | agent 的 PATH 和用户终端的 PATH 不一致。让用户在自己终端里跑 `tectonic --version` 确认 |
 
 ## 致谢
 

@@ -37,27 +37,81 @@ ok   page 5.0x8.0 in
 ok   both Source Han fonts present
 ```
 
-## Install
+## Setup
 
-Clone it straight into a skills directory:
+**Run the doctor before anything else:**
+
+```bash
+python scripts/build.py doctor
+```
+
+```
+cjk-novel environment
+
+  engine      ok    tectonic  (Tectonic 0.17.0)
+  bundle      ok    /home/you/.cache/Tectonic  (44 MB cached)
+  tempdir     ok    /tmp
+  body font   ok    assets/fonts/SourceHanSerifCN-Regular.otf
+  head font   ok    assets/fonts/SourceHanSansCN-Medium.otf
+
+ready
+```
+
+It ends with `ready` or `not ready yet`. The lines that matter:
+
+| line | meaning |
+|---|---|
+| `engine MISSING` | neither tectonic nor xelatex is installed |
+| `bundle cold` | the first build downloads macros one by one (~44 MB); needs network |
+| `tempdir FAIL` | no writable temp directory |
+| `body/head font MISSING` | the two Source Han OTF files are gone |
+
+**Engines.** Preference order is **tectonic, then xelatex**:
+
+- **tectonic** (preferred): one binary, no TeX Live, reruns itself
+- **xelatex**: plenty of machines already have TeX Live or MiKTeX. **The skill falls
+  back to it automatically** and runs two passes. If you already have a TeX setup there
+  is nothing to install.
+
+With neither present, install tectonic:
+
+```bash
+python scripts/build.py --install
+```
+
+It picks whichever package manager you have (scoop, choco, brew, apt/dnf/pacman, cargo)
+and prints the command it runs. Or do it yourself:
+
+```bash
+scoop install tectonic      # Windows, no admin
+choco install tectonic
+brew install tectonic       # macOS
+apt install tectonic        # Debian/Ubuntu
+cargo install tectonic      # if you already have Rust
+```
+
+## Install this skill
 
 ```bash
 git clone https://github.com/jefeerzhang/cjk-novel.git \
     ~/.agents/skills/cjk-novel
 ```
 
-That works for prime-agent and any other Agent Skills compatible loader. Restart the
-agent afterwards so it rescans the skills directory.
+Works with prime-agent and any other Agent Skills compatible loader. Restart the agent
+afterwards so it rescans the skills directory.
 
-Requires the `tectonic` binary:
+## Usage
 
 ```bash
-scoop install tectonic      # Windows
-choco install tectonic
-cargo install tectonic
+python scripts/build.py --init my-book     # template + 20 MB of fonts
+cd my-book
+# set \BookTitle and \BookAuthor, then write the text
+python ../scripts/build.py novel.tex
+python ../scripts/verify.py novel.tex
 ```
 
-First run downloads the TeX bundle (~100 MB) and caches it; later runs work offline.
+Flags: `--xelatex` (force the fallback), `--offline` (never hit the network once the
+bundle is cached), `-o DIR` (output folder).
 
 ## The three macros
 
@@ -84,6 +138,16 @@ Measured, do-not-guess constants live in `assets/novel.tex`: the `70.817pt` open
 breathing space, `37.4pt`/`31.4pt` around `\NarrativeBreak`, `22pt` for
 `\UnprintedPause`, and `\addtolength{\textheight}{-12pt}`. Change the page size or
 margins and they have to be re-measured against the output.
+
+## Troubleshooting
+
+| symptom | cause and fix |
+|---|---|
+| `Fontconfig error: Cannot load default config file` (Windows) | harmless; fonts load from `./fonts/`, not the system |
+| compile dies on `connection`, `timed out`, `dns`, `proxy` | no network, and tectonic fetches macros on demand. Retry, or pass `--bundle <URL>` to point at a mirror |
+| `--offline` fails on a cold cache | expected; run one build with network first |
+| font not found | `fonts/` is missing an OTF; `python scripts/build.py --init .` in a fresh folder copies both back |
+| `engine MISSING` but the user says they installed it | PATH differs between their shell and this agent's environment; ask them to run `tectonic --version` in their own terminal |
 
 ## Credits
 
